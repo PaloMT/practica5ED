@@ -51,10 +51,13 @@ public class ClubLectura {
 
     public boolean conectarLectores(Lector l1, Lector l2) {
         boolean conectado = false;
-        if( red.existeArista(l1.getId(),l2.getId())){
-            conectado = true;
-        }
-        else red.insertarArista(l1.getId(),l2.getId());
+        if (l1 != null && l2 != null) {
+            int indice1 = getIndice(l1);
+            int indice2 = getIndice(l2);
+            if (indice1 != -1 && indice2 != -1) {
+                if (!red.existeArista(indice1, indice2)) {
+                red.insertarArista(indice1, indice2);}
+            conectado = true;}}
         // ToDo: Completar para anadir la arista l1 <-> l2 (si se puede)
         return conectado;
     }
@@ -66,13 +69,24 @@ public class ClubLectura {
     }
 
     public boolean[] inicializa_visitados() {
-        boolean[] visitados = new boolean[1]; // To-Do: Modificar. Tantos como vertices
+        boolean[] visitados = new boolean[red.getNumVertices()];
+        // To-Do: Modificar. Tantos como vertices
+        for (int i = 0; i < red.getNumVertices(); i++) {
+            visitados[i] = false;}
+
         // ToDo: Inicializar visitados. Poner a false cada posicion.
         return visitados; // Array de visitados por defecto (ninguno visitado)
     }
 
     public List<Lector> getAmigos(Lector lector) { // Obtener lista de amigos directos
         List<Lector> amigos = new ArrayList<>();
+        if (lector !=null && red.verticeEnRango(getIndice(lector))){
+            for (int i=0; i<red.getNumVertices(); i++){
+                if (red.existeArista(getIndice(lector), i)) {
+                    amigos.add(lectores[i]);
+                }
+            }
+        }
         // ToDo: Completar getAmigos.
         // Si el lector existe y esta en el grafo, devuelve una lista con los amigos
         // Si el lector no existe o no esta en el grafo, devuelve una lista vacia
@@ -81,6 +95,18 @@ public class ClubLectura {
 
     public List<Lector> getGrupo(Lector lector) { // Obtener lista de grupo de amigos del lector
         List<Lector> grupo = new ArrayList<>();
+        if (lector != null){
+            int indiceLector = getIndice(lector);
+            if (red.verticeEnRango(indiceLector)) {
+                boolean[] visitados = inicializa_visitados();
+                red.recorridoEnProfundidad(indiceLector, visitados);
+                for (int i = 0; i < visitados.length; i++) {
+                    if (visitados[i]) {
+                        grupo.add(lectores[i]);
+                    }
+                }
+            }
+        }
         // ToDo: Completar getGrupo. Apoyate en recorridoEnProfundidad de GrafoMA sin modificarlo.
         // Si el lector existe y esta en el grafo, devuelve una lista con los amigos
         // Si el lector no existe o no esta en el grafo, devuelve una lista vacia
@@ -89,25 +115,72 @@ public class ClubLectura {
 
     public List<Lector> mayorGrupo() {
         List<Lector> mayor = new ArrayList<>();
-        boolean[] visitados_global = inicializa_visitados();
+        if (red != null && red.getNumVertices() != 0) {
+            boolean[] visitados_global = inicializa_visitados();
+            for (int i = 0; i < red.getNumVertices(); i++) {
+                if (!visitados_global[i]) {
+                    boolean[] visitados_local = inicializa_visitados();
+                    red.recorridoEnProfundidad(i, visitados_local);
+                    List<Lector> grupoActual = new ArrayList<>();
+                    for (int j = 0; j < visitados_local.length; j++) {
+                        if (visitados_local[j]) {
+                            grupoActual.add(lectores[j]);
+                            visitados_global[j] = true;
+                        }
+                    }
+                    if (grupoActual.size() > mayor.size()) {
+                        mayor = grupoActual;
+                    }
+                }
+        }}
         // ToDo: Completar mayorGrupo. Devuelve el grupo de amigos mas grande del club de lectura.
         // Apoyate en recorridoEnProfundidad de GrafoMA sin modificarlo.
         // Pista: puedes gestionar un array de visitados global y otro local para cada grupo
-        return mayor;
-    }
+        return mayor;}
 
     public int contarGrupos() {
         int numGrupos = 0;
+        boolean[] visitados_global = inicializa_visitados();
+
+        for (int i = 0; i < red.getNumVertices(); i++) {
+            if (!visitados_global[i]) {
+                numGrupos++;
+                red.recorridoEnProfundidad(i, visitados_global);
+            }
+        }
         // ToDo: Completar contarGrupos. Devuelve el numero de grupos de amigos distintos que hay en el club de lectura.
         // Apoyate en recorridoEnProfundidad de GrafoMA sin modificarlo.
         return numGrupos;
     }
 
     public String generoMasFrecuenteGrupo(Lector lector) {
+        String generoMasFrecuente = "";
+        if (lector != null && getIndice(lector) != -1) {
+            List<Lector> grupo = getGrupo(lector);
+            TreeMap<String, Integer> frecuencias = new TreeMap<>();
+            for (int i = 0; i < grupo.size(); i++) {
+                Lector l = grupo.get(i);
+                String genero = l.getGeneroLibroFavorito();
+                if (frecuencias.containsKey(genero)) {
+                    frecuencias.put(genero, frecuencias.get(genero) + 1);
+                } else {
+                    frecuencias.put(genero, 1);
+                }
+            }
+            int maxFrecuencia = 0;
+            Iterator<Map.Entry<String, Integer>> iterador = frecuencias.entrySet().iterator();
+            while (iterador.hasNext()) {
+                Map.Entry<String, Integer> entrada = iterador.next();
+
+                if (entrada.getValue() > maxFrecuencia) {
+                    maxFrecuencia = entrada.getValue();
+                    generoMasFrecuente = entrada.getKey();
+                }
+        }}
         // ToDo: Completar generoMasFrecuenteGrupo. Devuelve el genero mas frecuente entre los amigos del grupo de un lector.
         // Si no existe el lector o no esta en el grafo, devuelve cadena vacia
         // Si hay empate entre varios generos, devuelve cualquiera de ellos
         // Utiliza un TreeMap para contar la frecuencia de cada genero entre los amigos del grupo
-    return null;}
+    return generoMasFrecuente;}
 
 }
